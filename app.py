@@ -37,7 +37,7 @@ def drawPlot(selectedColumn, dataframe, locations, color, hover_name):
     mycolumn_title = mycolumn_title.title()
     mygraphtitle = f'{mycolumn_title} By Country'
     mycolorscale = 'ylorrd' # Note: The error message will list possible color scales.
-    mycolorbartitle = f"Millions of {mycolumn_title}"
+    mycolorbartitle = f"In 10Millions"
 
     # sorting
     dataframe.sort_values(by=selectedColumn, ascending=False, inplace=True)
@@ -58,17 +58,57 @@ def drawPlot(selectedColumn, dataframe, locations, color, hover_name):
     fig.update_layout(
         title_text = mygraphtitle,
         width=900,
+        height=700)
+    return fig
+
+def drawPie(selectedColumn, dataframe, title):
+    # sorting
+    dataframe.sort_values(by=selectedColumn, ascending=False, inplace=True)
+
+    df_x = dataframe.iloc[:9]
+
+    #### Fig Prep
+    fig = px.pie(data_frame = df_x
+          , names = 'country_name'
+          , values = selectedColumn
+          #, hover_data = selectedColumn
+          , color = px.colors.sequential.YlOrRd_r)
+
+
+
+    fig.update_layout(
+        title_text = title,
+        width=600,
         height=600)
     return fig
 
+def drawLine(selectedColumn, dataframe, title):
+    # sorting
+    dataframe.sort_values(by=selectedColumn, ascending=False, inplace=True)
 
+    df_x = dataframe.iloc[:9]
+
+    #### Fig Prep
+    fig = px.line(data_frame = df_x
+          , x = 'country_name'
+          , y = selectedColumn
+          , hover_data = [selectedColumn]
+          #, color = px.colors.sequential.YlOrRd_r
+                 )
+
+
+
+    fig.update_layout(
+        title_text = title,
+        width=900,
+        height=450)
+    return fig
 
 ## List of Options prep
 strlist = "population,population_male,population_female,population_rural,population_urban,population_largest_city,population_clustered,population_density,population_age_00_09,population_age_10_19,population_age_20_29,population_age_30_39,population_age_40_49,population_age_50_59,population_age_60_69,population_age_70_79,population_age_80_and_older"
 list_of_options = strlist.split(sep=",")
 
 #print (list_of_options)
-formatlisttext = lambda l: [ s.replace("_", " ").replace("population", "").replace("age", "age between").strip().title() for s in l]
 list_of_options_text = formatlisttext(list_of_options)
 list_of_options_text[0] = "All Population"
 #print(list_of_options_text)
@@ -82,6 +122,8 @@ for i in range(len(list_of_options)):
 
 # loading up the data frames and merging them
 df_idx = get_me_dataframe(file_idx)
+df_idx = df_idx[ df_idx['aggregation_level'] == 0]
+
 df_demo = get_me_dataframe(file_demo)
 #df_geo = get_me_dataframe(file_geo)
 
@@ -113,6 +155,7 @@ clist = cols.split(sep=',')
 for c in clist:
     print (c)
     df_m[c] = df_m[c].fillna(0)
+    df_m[c] = df_m[c]/10000000
     df_m[c] = df_m[c].astype(int)
 
 # prepare the params and call the function  to draw the plot
@@ -120,8 +163,12 @@ dataframe = df_m
 locations = "iso_3166_1_alpha_3"
 color = mycolumn
 hover_name = "country_name"
+mycolumn_title = mycolumn.replace ("_", " ")
+mycolumn_title = mycolumn_title.title()
 
-fig  = drawPlot(mycolumn, dataframe, locations, color, hover_name)
+fig1  = drawPlot(mycolumn, dataframe, locations, color, hover_name)
+fig2 = drawPie(mycolumn, dataframe, mycolumn_title)
+fig3 = drawLine(mycolumn, dataframe, mycolumn_title)
 
 
 ########### Initiate the app
@@ -140,19 +187,19 @@ app.layout = html.Div(children=[
         value="population",
         ),
     html.Div(id='your_output_here', children=''),
-    dcc.Graph(id='figure-1', figure=fig
-    )#,
-
-    #html.A('Code on Github', href=githublink),
-    #html.Br(),
-    #html.A("Data Source", href=sourceurl),
+    dcc.Graph(id='figure-1', figure=fig1),
+    dcc.Graph(id='figure-2', figure=fig2),
+    dcc.Graph(id='figure-3', figure=fig3)
     ]
 )
 
 ########## Define Callback
-@app.callback(Output('figure-1', 'figure'),
-              [Input('your_input_here', 'value')])
+@app.callback(Output('figure-1', 'figure')
+            , Output('figure-2', 'figure')
+            , Output('figure-3', 'figure')
+            , [Input('your_input_here', 'value')])
 def radio_results(myselection):
+
     print ("********  myselection: ", myselection)
     #preparing the parameters
     dataframe = df_m
@@ -160,10 +207,19 @@ def radio_results(myselection):
     color = myselection
     hover_name = "country_name"
     size = myselection
-    fig = drawPlot(myselection, dataframe, locations, color, hover_name)
-    print ("********  fig: ", fig)
+    mycolumn_title = myselection.replace ("_", " ")
+    mycolumn_title = mycolumn_title.title()
 
-    return fig
+    fig1 = drawPlot(myselection, dataframe, locations, color, hover_name)
+    print ("********  fig1: ", fig1)
+
+    fig2 = drawPie(myselection, dataframe, mycolumn_title)
+    print ("********  fig2: ", fig2)
+
+    fig3 = drawLine(myselection, dataframe, mycolumn_title)
+    print ("********  fig3: ", fig3)
+
+    return fig1,fig2, fig3
 
 
 ############ Deploy
